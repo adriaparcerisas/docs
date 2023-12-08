@@ -1145,6 +1145,64 @@ const tx = await fcl
 
 ---
 
+### `connectSubscribeEvents`
+
+A build that returns a [event stream connection](#eventstream) once decoded. It will establish a WebSocket connection to the Access Node and subscribe to events with the given parameters.
+
+#### Arguments
+
+| Name                     | Type     | Description                        |
+| ------------------------ | -------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `opts`                   | Object   | An object with the following keys: |
+| `opts.startBlockId`      | string   | undefined                          | The block ID to start listening for events. Example: `9dda5f281897389b99f103a1c6b180eec9dac870de846449a302103ce38453f3` |
+| `opts.startHeight`       | number   | undefined                          | The block height to start listening for events. Example: `123`                                                          |
+| `opts.eventTypes`        | string[] | undefined                          | The event types to listen for. Example: `A.7e60df042a9c0868.FlowToken.TokensWithdrawn`                                  |
+| `opts.addresses`         | string[] | undefined                          | The addresses to listen for. Example: `0x7e60df042a9c0868`                                                              |
+| `opts.contracts`         | string[] | undefined                          | The contracts to listen for. Example: `0x7e60df042a9c0868`                                                              |
+| `opts.heartbeatInterval` | number   | undefined                          | The interval in milliseconds to send a heartbeat to the Access Node. Example: `10000`                                   |
+
+#### Returns after decoding
+
+#### Returns
+
+| Type                                  | Description                      |
+| ------------------------------------- | -------------------------------- |
+| [EventStreamConnection](#eventstream) | A connection to the event stream |
+
+#### Usage
+
+```javascript
+import * as fcl from '@onflow/fcl';
+
+const eventStream = await fcl
+  .send([
+    fcl.connectSubscribeEvents({
+      eventTypes: 'A.7e60df042a9c0868.FlowToken.TokensWithdrawn',
+    }),
+  ])
+  .then(fcl.decode);
+
+eventStream.on('heartbeat', (heartbeat) => {
+  console.log(heartbeat);
+});
+
+eventStream.on('events', (event) => {
+  console.log(event);
+});
+
+eventStream.on('error', (error) => {
+  console.log(error);
+});
+
+eventStream.on('end', () => {
+  console.log('Connection closed');
+});
+
+eventStream.close();
+```
+
+---
+
 ### `getEvents` (Deprecated)
 
 Use [`fcl.getEventsAtBlockHeightRange`](#geteventsatblockheightrange) or [`fcl.getEventsAtBlockIds`](#geteventsatblockids).
@@ -1907,3 +1965,93 @@ FCL arguments must specify one of the following support types for each value pas
 | `Path`       | `fcl.arg({ domain: "public", identifier: "flowTokenVault" }, t.Path)`                                                |
 
 ---
+
+### `StreamConnection`
+
+A stream connection is an object for subscribing to generic data from any WebSocket data stream. This is the base type for all stream connections. Two channels, `close` and `error`, are always available, as they are used to signal the end of the stream and any errors that occur.
+
+```ts
+export interface StreamConnection<ChannelMap extends { [name: string]: any }> {
+  // Subscribe to a channel
+  on<C extends keyof ChannelMap>(
+    channel: C,
+    listener: (data: ChannelMap[C]) => void,
+  ): this;
+  on(event: 'close', listener: () => void): this;
+  on(event: 'error', listener: (err: any) => void): this;
+
+  // Unsubscribe from a channel
+  off<C extends keyof ChannelMap>(
+    event: C,
+    listener: (data: ChannelMap[C]) => void,
+  ): this;
+  off(event: 'close', listener: () => void): this;
+  off(event: 'error', listener: (err: any) => void): this;
+
+  // Close the connection
+  close(): void;
+}
+```
+
+#### Usage
+
+```ts
+import { StreamConnection } from "@onflow/typedefs"
+
+const stream: StreamConnection = ...
+
+stream.on("close", () => {
+  // Handle close
+})
+
+stream.on("error", (err) => {
+  // Handle error
+})
+
+stream.close()
+```
+
+### `EventStream`
+
+An event stream is a stream connection that emits events and block heartbeats. Based on the connection parameters, heartbeats will be emitted at least as often as some fixed block height interval.
+
+```ts
+export type EventStream = StreamConnection<{
+  events: Event[];
+  heartbeat: BlockHeartbeat;
+}>;
+```
+
+#### Usage
+
+```ts
+import { EventStream } from "@onflow/typedefs"
+
+const stream: EventStream = ...
+
+stream.on("events", (events) => {
+  // Handle events
+})
+
+stream.on("heartbeat", (heartbeat) => {
+  // Handle heartbeat
+})
+```
+
+### `BlockHeartbeat`
+
+```ts
+export interface BlockHeartbeat {
+  blockId: string;
+  blockHeight: number;
+  timestamp: string;
+}
+```
+
+#### Usage
+
+```ts
+import { BlockHeartbeat } from "@onflow/typedefs"
+
+const heartbeat: BlockHeartbeat = ...
+```
