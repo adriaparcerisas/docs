@@ -2013,7 +2013,7 @@ stream.close()
 
 ### `EventStream`
 
-An event stream is a stream connection that emits events and block heartbeats. Based on the connection parameters, heartbeats will be emitted at least as often as some fixed block height interval.
+An event stream is a stream connection that emits events and block heartbeats. Based on the connection parameters, heartbeats will be emitted at least as often as some fixed block height interval.  It is a specific variant of a [StreamConnection](#streamconnection).
 
 ```ts
 type EventStream = StreamConnection<{
